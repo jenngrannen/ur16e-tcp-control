@@ -14,6 +14,7 @@ sys.path.append(os.getcwd())
 import numpy as np
 
 from setup import DEFAULT_ORN_LEFT, DEFAULT_ORN_RIGHT, WORKSPACE_SURFACE, DIST_UR5
+from base_transforms import LEFT_TRANSFORM_VIEW_TO_BASE, LEFT_TRANSLATION_VIEW_TO_BASE, RIGHT_TRANSFORM_VIEW_TO_BASE, RIGHT_TRANSLATION_VIEW_TO_BASE
 from ur5_pair import UR5Pair
 
 class URPairEnv:
@@ -29,8 +30,9 @@ class URPairEnv:
         if reset_pos is not None:
             self.reset_pos = reset_pos
         else:
-            left_reset_pos = [0.67844598, -0.16828214,  0.49778534] + [0.27494682,  1.04809644, -2.41703083]
-            right_reset_pos = [0, 0, 0] + [2.9, -1.5, 0.0] # check this
+            # left_reset_pos = [0.67844598, -0.16828214,  0.49778534] + [0.27494682,  1.04809644, -2.41703083]
+            left_reset_pos = [0.74244389, -0.08874822, -0.07224094,  1.55357114,  1.88830061, -0.8591237]
+            right_reset_pos = [-0.75753717,  0.0034128 ,  0.1644607 , -0.38682328, -1.09841939, 2.59382428]
             self.reset_pos = [left_reset_pos, right_reset_pos]
 
     def reset(self):
@@ -47,36 +49,54 @@ class URPairEnv:
         # if self.control_ori: assumes 12d action input
 
         # rescale action (assuming input is normalized)
-        rescaled_action = self._convert_action(action) if rescale_needed else action
-        left_pose, right_pose = self.ur_pair.get_pose()
-        new_left_pose = np.array(left_pose).copy()
-        new_right_pose = np.array(right_pose).copy()
+        rescaled_action = self._rescale_action(action) if rescale_needed else action
+        left_pose_base, right_pose_base = self.ur_pair.get_pose()
+        # convert base frame to world frame
+        left_pose_world, right_pose_world = self._base_to_world(left_pose_base, right_pose_base)
+
+        new_left_pose_world = np.array(left_pose_world).copy()
+        new_right_pose_world = np.array(right_pose_world).copy()
 
         if not self.control_ori:
-            left_deltas = np.zeros(len(left_pose)//2)
+            left_deltas = np.zeros(len(left_pose_world))
             left_deltas[:3] = rescaled_action[:3]
-            right_deltas = np.zeros(len(right_pose)//2)
+            right_deltas = np.zeros(len(right_pose_world))
             right_deltas[:3] = rescaled_action[3:]
 
-            new_left_pose += left_deltas
-            new_right_pose += right_deltas
+            new_left_pose_world += left_deltas
+            new_right_pose_world += right_deltas
         else:
-            new_left_pose += rescaled_action[:(len(rescaled_action)//2)]
-            new_right_pose += rescaled_action[(len(rescaled_action)//2):]
+            new_left_pose_world += rescaled_action[:(len(rescaled_action)//2)]
+            new_right_pose_world += rescaled_action[(len(rescaled_action)//2):]
+
+        # convert from world frame to base frame
+        new_left_pose_base, new_right_pose_base = self._world_to_base(new_left_pose_world, new_right_pose_world)
 
         if verbose:
-            print("new_left_pose", new_left_pose)
-            print("new_right_pose", new_right_pose)
+            print("---WORLD/VIEW FRAME---")
+            print("current left", left_pose_world)
+            print("new left", new_left_pose_world)
+            print("current right", right_pose_world)
+            print("new right", new_right_pose_world)
+            print()
+
+            print("---BASE FRAME---")
+            print("current left", left_pose_base)
+            print("new left", new_left_pose_base)
+            print("current right", right_pose_base)
+            print("new right", new_right_pose_base)
+            
             input("Confirm movement? Press any key.")
 
         self.ur_pair.move(
             move_type="l",
-            params=[new_left_pose, new_right_pose],
+            params=[new_left_pose_base, new_right_pose_base],
             blocking=True,
             use_pos=True)
 
         # get obs after action
         obs = self._get_obs(rescale_needed=rescale_needed)
+        print("obs", obs)
 
         # define task-specific reward outside of this class
         reward = None
@@ -91,12 +111,38 @@ class URPairEnv:
     def get_force_info(self):
         pass # todo
 
+    def _world_to_base(self, left_pose, right_pose):
+        new_left_position = np.dot(LEFT_TRANSFORM_VIEW_TO_BASE, left_pose[:3]) + LEFT_TRANSLATION_VIEW_TO_BASE
+        new_right_position = np.dot(RIGHT_TRANSFORM_VIEW_TO_BASE, right_pose[:3]) + RIGHT_TRANSLATION_VIEW_TO_BASE
+
+        new_left_pose = np.array(left_pose)
+        new_left_pose[:3] = new_left_position
+        new_right_pose = np.array(right_pose)
+        new_right_pose[:3] = new_right_position
+        return new_left_pose, new_right_pose
+
+
+    def _base_to_world(self, left_pose, right_pose):
+        new_left_position = np.dot(np.linalg.inv(LEFT_TRANSFORM_VIEW_TO_BASE), (left_pose[:3] - LEFT_TRANSLATION_VIEW_TO_BASE))
+        new_right_position = np.dot(np.linalg.inv(RIGHT_TRANSFORM_VIEW_TO_BASE), (right_pose[:3] - RIGHT_TRANSLATION_VIEW_TO_BASE))
+
+        new_left_pose = np.array(left_pose)
+        new_left_pose[:3] = new_left_position
+        new_right_pose = np.array(right_pose)
+        new_right_pose[:3] = new_right_position
+        return new_left_pose, new_right_pose        
+
+
     def _get_obs(self, rescale_needed=True):
         # assume observation space is just robot ee position data
         final_left_pose, final_right_pose = self.ur_pair.get_pose()
-        obs = final_left_pose
-        obs.extend(final_right_pose)
-        obs = _rescale_obs(obs) if rescale_needed else obs
+
+        # change this from robot base frame to world frame
+        world_left_pose, world_right_pose = self._base_to_world(final_left_pose, final_right_pose)
+
+        obs = list(world_left_pose)
+        obs.extend(world_right_pose)
+        obs = self._rescale_obs(obs) if rescale_needed else obs
         return obs
 
     def _rescale_obs(self, obs):
@@ -153,10 +199,20 @@ class URPairEnv:
 
 if __name__ == "__main__":
     ur_pair = UR5Pair()
+    # workspace = [ # these are made up examples and need to be calibrated
+    #     [-10, 10], # x lim
+    #     [-2, 3], # y lim
+    #     [-5, -2] # z lim
+    # ]
+
     workspace = [ # these are made up examples and need to be calibrated
         [-10, 10], # x lim
         [-2, 3], # y lim
         [-5, -2] # z lim
     ]
     robot_env = URPairEnv(ur_pair, workspace)
-    
+    print("robot_env", robot_env.ur_pair.get_pose()[1][:3])
+    while True:
+        action = [0, 0, -1.0]+[0, 0, -1.0]
+        robot_env.step(action, verbose=True)
+
