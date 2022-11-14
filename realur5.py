@@ -202,7 +202,6 @@ class UR5:
             return False
         if self.use_pos:
             tool_pose = self.state.get_ee_pose()
-            print("tool pose", self.name, tool_pose)
             tool_pose_mirror = np.asarray(list(tool_pose))
             tool_pose_mirror[-3:] = clamp_angles(tool_pose_mirror[-3:])
             tool_pose_mirror[3:6] = clamp_angles(-tool_pose_mirror[3:6])

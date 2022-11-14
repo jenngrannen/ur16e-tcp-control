@@ -1,5 +1,5 @@
 import sys
-import os 
+import os
 sys.path.append(os.getcwd())
 
 import numpy as np
@@ -23,7 +23,7 @@ def test_move(ur5_pair, front_camera, height: float, grasp_width: float,
 
         control_ori = False
         deltas = [0,0,height]
-        if not control_ori: 
+        if not control_ori:
             deltas.extend([0,0,0])
         deltas = np.array(deltas)
 
@@ -33,14 +33,14 @@ def test_move(ur5_pair, front_camera, height: float, grasp_width: float,
         new_right_pose += deltas
         print("new_left_pose", new_left_pose)
         print("new_right_pose", new_right_pose)
-        input("Confirm movement?")
+        input("Confirm movement? Press any key.")
 
         ur5_pair.move(
             move_type="l",
             params=[
                 # left
                 new_left_pose,
-                # [0.67844598, -0.16828214,  0.49778534 + 0.1] + DEFAULT_ORN_LEFT,  
+                # [0.67844598, -0.16828214,  0.49778534 + 0.1] + DEFAULT_ORN_LEFT,
                 # [dx, 0, height] + DEFAULT_ORN_LEFT,
                 # right
                 # [dx, 0, height] + DEFAULT_ORN],
@@ -64,4 +64,3 @@ if __name__ == "__main__":
     # s.send(("set_digital_out(0, True)"+"\n").encode("utf8"))
     # time.sleep(0.2)
     # s.send(("set_digital_out(0, False)"+"\n").encode("utf8"))
-
