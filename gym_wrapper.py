@@ -7,6 +7,8 @@ This is a wrapper for taking an action from RL training and executing it on the 
    (eg a camera or force data)
 """
 
+# NOTE: JENN: fix base transformation for this
+
 import sys
 import os
 sys.path.append(os.getcwd())
@@ -85,7 +87,7 @@ class URPairEnv:
             print("new left", new_left_pose_base)
             print("current right", right_pose_base)
             print("new right", new_right_pose_base)
-            
+
             input("Confirm movement? Press any key.")
 
         self.ur_pair.move(
@@ -130,7 +132,7 @@ class URPairEnv:
         new_left_pose[:3] = new_left_position
         new_right_pose = np.array(right_pose)
         new_right_pose[:3] = new_right_position
-        return new_left_pose, new_right_pose        
+        return new_left_pose, new_right_pose
 
 
     def _get_obs(self, rescale_needed=True):
@@ -194,9 +196,6 @@ class URPairEnv:
                 new_action[i*6+5] = action[i*6+5]*d_angle
         return new_action
 
-
-
-
 if __name__ == "__main__":
     ur_pair = UR5Pair()
     # workspace = [ # these are made up examples and need to be calibrated
@@ -215,4 +214,3 @@ if __name__ == "__main__":
     while True:
         action = [0, 0, -1.0]+[0, 0, -1.0]
         robot_env.step(action, verbose=True)
-

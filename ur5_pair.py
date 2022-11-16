@@ -15,7 +15,7 @@ class UR5Pair:
 
     def move_delta(self, deltas, control_ori=False, verbose=True):
         left_deltas, right_deltas = deltas
-        if not control_ori: 
+        if not control_ori:
             left_deltas.extend([0,0,0])
             right_deltas.extend([0,0,0])
         left_deltas, right_deltas = np.array(left_deltas), np.array(right_deltas)
@@ -23,10 +23,10 @@ class UR5Pair:
         left_pose, right_pose = self.get_pose()
         new_left_pose = np.array(left_pose).copy()
         new_right_pose = np.array(right_pose).copy()
-    
+
         new_left_pose += left_deltas
         new_right_pose += right_deltas
-    
+
         if verbose:
             print("left pose", left_pose)
             print("right pose", right_pose)
