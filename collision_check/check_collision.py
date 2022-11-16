@@ -17,8 +17,8 @@ control_joint_names = ["shoulder_pan_joint", "shoulder_lift_joint", "elbow_joint
 
 class URPairSim:
     def __init__(self, real_ur_pair=None, control_ori=False, vis=True):
-        self.left_base_position = (0.0, -0.3, 1.025) # these are estimations
-        self.right_base_position = (0.0, 0.3, 1.025)
+        self.left_base_position = (0.0, -0.2, 1.025) # these are estimations
+        self.right_base_position = (0.0, 0.2, 1.025)
         self.left_base_orientation = (0.9659258, 0, 0, 0.258819)
         self.right_base_orientation = (0.9659258, 0, 0, -0.258819)
 
