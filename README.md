@@ -9,3 +9,5 @@ There is a gym wrapper for RL training in `gym_wrapper.py` that can be tested wi
 Additionally, there is collision checking support based in PyBullet in `collision_check/check_collision.py`. This can be run to either:
 * start a PyBullet visualization of a sequence of actions by running `python check_collision.py` from the `collision_check` directory and defining the desired list of actions in the main method.
 * run a collision checker in the background with the `URPairSim` class by setting `vis=False` and calling the `check_collision` method.
+
+One note for the collision checking, there are a few hard coded filepaths in two files. You should replace these with your path to this repo (`/Users/jennifergrannen/Documents/Stanford/iliad/stable_bimanual/ur16e-tcp-control` --> `your_path/ur16e-tcp-control`) in the files `collision_check/ur16e_bullet.urdf` and `collision_check/check_collision.py`.
