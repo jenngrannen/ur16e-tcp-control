@@ -7,10 +7,9 @@ This is a wrapper for taking an action from RL training and executing it on the 
    (eg a camera or force data)
 """
 
-# NOTE: JENN: fix base transformation for this
-
 import sys
 import os
+from gym import Env, spaces
 sys.path.append(os.getcwd())
 
 import numpy as np
@@ -19,7 +18,7 @@ from setup import DEFAULT_ORN_LEFT, DEFAULT_ORN_RIGHT, WORKSPACE_SURFACE, DIST_U
 from base_transforms import LEFT_TRANSFORM_VIEW_TO_BASE, LEFT_TRANSLATION_VIEW_TO_BASE, RIGHT_TRANSFORM_VIEW_TO_BASE, RIGHT_TRANSLATION_VIEW_TO_BASE
 from ur5_pair import UR5Pair
 
-class URPairEnv:
+class URPairEnv(Env):
     def __init__(self, ur_pair, workspace, reset_pos=None, control_ori=False):
         self.ur_pair = ur_pair
         self.workspace = workspace # list of axis limits
