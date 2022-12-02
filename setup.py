@@ -37,14 +37,15 @@ CURRENT_CLOTH = 'hannes_tshirt'
 
 def get_ur5s():
     return [
-        UR5(name="02_robot",
-            tcp_ip='192.168.0.2',
+        UR5(name="lipa_robot",
+            # tcp_ip='192.168.0.2',
+            tcp_ip='172.24.69.73',
             velocity=UR5_VELOCITY,
             acceleration=UR5_ACCELERATION,
             # gripper=RG2(tcp_ip='XXX.XXX.X.XXX')),
             gripper=None),
-        UR5(name="03_robot",
-            tcp_ip='192.168.0.3',
+        UR5(name="dua_robot",
+            tcp_ip='172.24.69.64',
             velocity=UR5_VELOCITY,
             acceleration=UR5_ACCELERATION,
             # gripper=WSG50(tcp_ip='XXX.XXX.X.XXX')),

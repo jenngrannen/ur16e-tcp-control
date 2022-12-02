@@ -38,7 +38,7 @@ class URPairEnv(Env):
         self.action_space = spaces.Box(low = np.array([-1]),
                                         high = np.array([1]))
 
-    def reset(self):
+    def reset(self, rescale_needed=True):
         self.ur_pair.move(
             move_type="l",
             params=self.reset_pos,
@@ -59,16 +59,15 @@ class URPairEnv(Env):
         new_left_pose_world = np.array(left_pose_world).copy()
         new_right_pose_world = np.array(right_pose_world).copy()
 
-        if not self.control_ori:
-            left_deltas = np.zeros(len(left_pose_world))
-            left_deltas[0] = rescaled_action[0]
-            new_left_pose_world += left_deltas
+        left_deltas = np.zeros(len(left_pose_world))
+        left_deltas[0] = rescaled_action[0]
+        new_left_pose_world += left_deltas
 
         # convert from world frame to base frame
         new_left_pose_base, new_right_pose_base = self._world_to_base(new_left_pose_world, new_right_pose_world)
         new_left_x = np.clip([new_left_pose_base[0]], [self.workspace[0][0]], [self.workspace[0][1]])[0]
         new_left_pose_base[0] = new_left_x
-        assert new_right_pose_base == right_pose_base
+        # assert new_right_pose_base == right_pose_base
 
         if verbose:
             print("---WORLD/VIEW FRAME---")
@@ -160,8 +159,8 @@ class URPairEnv(Env):
 
     def _rescale_action(self, action):
         # from -1, 1 to workspace dims
-        x_scale = 0.04
-        return action*x_scale
+        x_scale = 0.1
+        return [action[0]*x_scale]
 
 if __name__ == "__main__":
     ur_pair = UR5Pair()
@@ -175,7 +174,8 @@ if __name__ == "__main__":
         [0.365, 0.663], # x lim
     ]
     robot_env = URPairEnv(ur_pair, workspace)
-    print("robot_env", robot_env.ur_pair.get_pose()[1][:3])
+    print("robot_env", robot_env.ur_pair.get_pose()[0][:3])
+    robot_env.reset()
     while True:
-        action = [0.1]
+        action = [0.5]
         robot_env.step(action, verbose=True)
