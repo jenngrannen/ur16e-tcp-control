@@ -25,6 +25,8 @@ genlisp==0.4.18
 genmsg==0.6.0
 gennodejs==2.0.2
 genpy==0.6.15
+gym==0.26.2
+gym-notices==0.0.8
 h5py==3.7.0
 idna==3.4
 image-geometry==1.16.2

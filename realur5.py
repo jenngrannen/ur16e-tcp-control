@@ -152,14 +152,14 @@ class UR5:
             move_type = [move_type]
             times = [times]
             blend = [blend]
-        print("use_pos", use_pos, params)
+        # print("use_pos", use_pos, params)
         # if use_pos:
         #     # check all poses are reachable
         #     if not all([self.check_pose_reachable(pose=param)
         #                 for param in params]):
         #         return False
         self.curr_targ = params[-1]
-        print("curr_targ", self.curr_targ)
+        # print("curr_targ", self.curr_targ)
         if self.use_pos:
             self.curr_targ[-3:] = clamp_angles(self.curr_targ[-3:])
 
