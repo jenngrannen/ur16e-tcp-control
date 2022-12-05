@@ -5,6 +5,8 @@ import struct
 from abc import ABC, abstractmethod, abstractproperty
 import numpy as np
 
+from base_transforms import LEFT_TRANSFORM_VIEW_TO_BASE, LEFT_TRANSLATION_VIEW_TO_BASE, RIGHT_TRANSFORM_VIEW_TO_BASE, RIGHT_TRANSLATION_VIEW_TO_BASE
+
 
 class Gripper(ABC):
     @abstractmethod
@@ -30,6 +32,26 @@ class Gripper(ABC):
         # in meters
         return [0, 0, self.ee_tip_z_offset, 0, 0, 0]
 
+def world_to_base(left_pose, right_pose):
+    new_left_position = np.dot(LEFT_TRANSFORM_VIEW_TO_BASE, left_pose[:3]) + LEFT_TRANSLATION_VIEW_TO_BASE
+    new_right_position = np.dot(RIGHT_TRANSFORM_VIEW_TO_BASE, right_pose[:3]) + RIGHT_TRANSLATION_VIEW_TO_BASE
+
+    new_left_pose = np.array(left_pose)
+    new_left_pose[:3] = new_left_position
+    new_right_pose = np.array(right_pose)
+    new_right_pose[:3] = new_right_position
+    return new_left_pose, new_right_pose
+
+
+def base_to_world(left_pose, right_pose):
+    new_left_position = np.dot(np.linalg.inv(LEFT_TRANSFORM_VIEW_TO_BASE), (left_pose[:3] - LEFT_TRANSLATION_VIEW_TO_BASE))
+    new_right_position = np.dot(np.linalg.inv(RIGHT_TRANSFORM_VIEW_TO_BASE), (right_pose[:3] - RIGHT_TRANSLATION_VIEW_TO_BASE))
+
+    new_left_pose = np.array(left_pose)
+    new_left_pose[:3] = new_left_position
+    new_right_pose = np.array(right_pose)
+    new_right_pose[:3] = new_right_position
+    return new_left_pose, new_right_pose
 
 def connect(ip, port):
     sock = socket(AF_INET, SOCK_STREAM)
