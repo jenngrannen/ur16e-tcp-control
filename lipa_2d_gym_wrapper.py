@@ -37,13 +37,14 @@ class Lipa2DEnv(Env):
         left_reset_pos_base, right_reset_pos_base = self._world_to_base(self.reset_pos_world[0], self.reset_pos_world[1])
         self.reset_pos_base = [left_reset_pos_base, right_reset_pos_base]
 
-        self.observation_space = spaces.Box(low = np.array([workspace[0][0]]),
-                                            high = np.array([workspace[0][1]]))
+        self.observation_space = spaces.Box(low = np.array([workspace[0][0], workspace[1][0]]),
+                                            high = np.array([workspace[0][1], workspace[1][1]]))
 
-        self.action_space = spaces.Box(low = np.array([-1]),
-                                        high = np.array([1]))
+        self.action_space = spaces.Box(low = np.array([-1, -1]),
+                                        high = np.array([1, 1]))
 
         # for pytorch_sac:
+        self.ep_step = 0
         self._max_episode_steps = 10
 
     def seed(self, seed):
@@ -57,10 +58,12 @@ class Lipa2DEnv(Env):
             blocking=True,
             use_pos=True)
         obs = self._get_obs(rescale_needed=rescale_needed)
+        self.ep_step = 0
         return obs
 
     def step(self, action, rescale_needed=True, verbose=False):
         # assumes 1d action input
+        self.ep_step += 1
 
         # rescale action (assuming input is normalized)
         rescaled_action = self._rescale_action(action) if rescale_needed else action
@@ -107,11 +110,14 @@ class Lipa2DEnv(Env):
         obs = self._get_obs(rescale_needed=rescale_needed)
 
         # define task-specific reward outside of this class
-        reward = -1*sum((obs[0]-self.goal_position)**2)
+        reward = -1*((obs[0]-self.goal_position[0])**2 + (obs[1]-self.goal_position[1])**2)
         # define task-specific done outside of this class
-        done = reward > -0.0004 # should be within 0.02 of goal
+        done_dist = reward > -0.0009 # should be within 0.03 of goal
+        if done_dist: reward = +0.5
+        done = done_dist or self.ep_step >= self._max_episode_steps
         print("obs, reward, done:", obs, reward, done)
-        if done: print("SUCCESS")
+        if done_dist: print("SUCCESS")
+        if done and not done_dist: print("MAX STEPS")
 
         return obs, reward, done, {}
 
