@@ -12,23 +12,29 @@ import os
 from gym import Env, spaces
 sys.path.append(os.getcwd())
 
+
 import numpy as np
 
+print(sys.path)
 from setup import DEFAULT_ORN_LEFT, DEFAULT_ORN_RIGHT, WORKSPACE_SURFACE, DIST_UR5
 from base_transforms import LEFT_TRANSFORM_VIEW_TO_BASE, LEFT_TRANSLATION_VIEW_TO_BASE, RIGHT_TRANSFORM_VIEW_TO_BASE, RIGHT_TRANSLATION_VIEW_TO_BASE
 from ur5_pair import UR5Pair
 
-class URPairEnv(Env):
-    def __init__(self, ur_pair, workspace, reset_pos=None, control_ori=False):
-        self.ur_pair = ur_pair
+class Lipa1DEnv(Env):
+    def __init__(self, ur_pair=None, workspace=[[0.365, 0.663]], reset_pos=None, control_ori=False):
+        if ur_pair is None:
+            self.ur_pair = UR5Pair()
+        else:
+            self.ur_pair = ur_pair
         self.workspace = workspace # list of axis limits
 
-        self.goal_position = 0.45
+        self.goal_position = 0.53
 
         if reset_pos is not None:
             self.reset_pos = reset_pos
         else:
-            left_reset_pos = [0.662408, -0.62524, 0.440529, -0.004274, -1.035806, 2.954933]
+            left_reset_pos = [0.60408, -0.62524, 0.440529, -0.004274, -1.035806, 2.954933]
+            # left_reset_pos = [0.53, -0.62524, 0.440529, -0.004274, -1.035806, 2.954933]
             right_reset_pos = [-0.467998, 0.41326, 0.32809, -0.29323, -0.9106905, 1.4417393]
             self.reset_pos = [left_reset_pos, right_reset_pos]
 
@@ -38,7 +44,14 @@ class URPairEnv(Env):
         self.action_space = spaces.Box(low = np.array([-1]),
                                         high = np.array([1]))
 
+        # for pytorch_sac:
+        self._max_episode_steps = 10
+
+    def seed(self, seed):
+        pass
+
     def reset(self, rescale_needed=True):
+        print("RESETTING")
         self.ur_pair.move(
             move_type="l",
             params=self.reset_pos,
@@ -47,7 +60,7 @@ class URPairEnv(Env):
         obs = self._get_obs(rescale_needed=rescale_needed)
         return obs
 
-    def step(self, action, rescale_needed=True, verbose=True):
+    def step(self, action, rescale_needed=True, verbose=False):
         # assumes 1d action input
 
         # rescale action (assuming input is normalized)
@@ -65,6 +78,7 @@ class URPairEnv(Env):
 
         # convert from world frame to base frame
         new_left_pose_base, new_right_pose_base = self._world_to_base(new_left_pose_world, new_right_pose_world)
+        # JENN: I think this should be clipping for world?
         new_left_x = np.clip([new_left_pose_base[0]], [self.workspace[0][0]], [self.workspace[0][1]])[0]
         new_left_pose_base[0] = new_left_x
         # assert new_right_pose_base == right_pose_base
@@ -95,9 +109,11 @@ class URPairEnv(Env):
         obs = self._get_obs(rescale_needed=rescale_needed)
 
         # define task-specific reward outside of this class
-        reward = -1*(obs-self.goal_position)**2
+        reward = -1*((obs[0]-self.goal_position)**2)
         # define task-specific done outside of this class
-        done = reward < 0.1
+        done = reward > -0.0004 # should be within 0.02 of goal
+        print("obs, reward, done:", obs, reward, done)
+        if done: print("SUCCESS")
 
         return obs, reward, done, {}
 
@@ -130,9 +146,10 @@ class URPairEnv(Env):
         # change this from robot base frame to world frame
         world_left_pose, world_right_pose = self._base_to_world(final_left_pose, final_right_pose)
 
-        obs = world_left_pose[0]
+        obs = final_left_pose[0] # JENN: shouldn't this be world_left_pose? idk
+        # print("world pose", world_left_pose, final_left_pose)
         # obs = self._rescale_obs(obs) if rescale_needed else obs
-        return obs
+        return np.array([obs])
 
     def _rescale_obs(self, obs):
         # from workspace dims to -1, 1
@@ -162,6 +179,9 @@ class URPairEnv(Env):
         x_scale = 0.1
         return [action[0]*x_scale]
 
+    def render(self):
+        return np.zeros((64,64,3))
+
 if __name__ == "__main__":
     ur_pair = UR5Pair()
     # workspace = [ # these are made up examples and need to be calibrated
@@ -170,10 +190,10 @@ if __name__ == "__main__":
     #     [-5, -2] # z lim
     # ]
 
-    workspace = [ # these are made up examples and need to be calibrated
+    workspace = [ 
         [0.365, 0.663], # x lim
     ]
-    robot_env = URPairEnv(ur_pair, workspace)
+    robot_env = Lipa1DEnv(ur_pair, workspace)
     print("robot_env", robot_env.ur_pair.get_pose()[0][:3])
     robot_env.reset()
     while True:

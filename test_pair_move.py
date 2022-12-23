@@ -51,7 +51,7 @@ def test_move(ur5_pair, front_camera, height: float, grasp_width: float,
 
         control_ori = False
         # deltas = [0,0,height]
-        deltas = [0.02, 0, 0]
+        deltas = [0, 0, 0.02]
         if not control_ori:
             deltas.extend([0,0,0])
         deltas = np.array(deltas)

@@ -11,7 +11,7 @@ import sys
 import os
 from gym import Env, spaces
 sys.path.append(os.getcwd())
-
+print(os.getcwd())
 import numpy as np
 
 from setup import DEFAULT_ORN_LEFT, DEFAULT_ORN_RIGHT, WORKSPACE_SURFACE, DIST_UR5
@@ -109,10 +109,10 @@ class Lipa2DEnv(Env):
         # get obs after action
         obs = self._get_obs(rescale_needed=rescale_needed)
 
-        # define task-specific reward outside of this class
-        reward = -1*((obs[0]-self.goal_position[0])**2 + (obs[1]-self.goal_position[1])**2)
+        dist = ((obs[0]-self.goal_position[0])**2 + (obs[1]-self.goal_position[1])**2)
+        reward = -10*dist
         # define task-specific done outside of this class
-        done_dist = reward > -0.0009 # should be within 0.03 of goal
+        done_dist = dist < 0.0009 # should be within 0.03 of goal
         if done_dist: reward = +0.5
         done = done_dist or self.ep_step >= self._max_episode_steps
         print("obs, reward, done:", obs, reward, done)
