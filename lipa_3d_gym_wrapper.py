@@ -19,14 +19,15 @@ from realur5_utils import base_to_world, world_to_base
 from ur5_pair import UR5Pair
 
 class Lipa3DEnv(Env):
-    def __init__(self, ur_pair=None, workspace=[[-0.630, -0.481],[-0.613, -0.163]], reset_pos=None, control_ori=False):
+    def __init__(self, ur_pair=None, workspace=[[-0.630, -0.481],[-0.613, -0.163],[-0.481, -0.385]], reset_pos=None, control_ori=False):
+        print('Lipa3DEnv is initialized')
         if ur_pair is None:
             self.ur_pair = UR5Pair()
         else:
             self.ur_pair = ur_pair
         self.workspace = workspace # list of axis limits
 
-        self.goal_position = [-0.521, -0.413]
+        self.goal_position = [-0.521, -0.413,-0.434]
 
         if reset_pos is not None:
             self.reset_pos_world = reset_pos
@@ -37,20 +38,29 @@ class Lipa3DEnv(Env):
         left_reset_pos_base, right_reset_pos_base = world_to_base(self.reset_pos_world[0], self.reset_pos_world[1])
         self.reset_pos_base = [left_reset_pos_base, right_reset_pos_base]
 
-        self.observation_space = spaces.Box(low = np.array([workspace[0][0]]),
-                                            high = np.array([workspace[0][1]]))
+        # self.observation_space = spaces.Box(low = np.array([workspace[0][0]]),
+        #                                     high = np.array([workspace[0][1]]))
 
-        self.action_space = spaces.Box(low = np.array([-1]),
-                                        high = np.array([1]))
+        # self.action_space = spaces.Box(low = np.array([-1]),
+        #                                 high = np.array([1]))
+
+        self.observation_space = spaces.Box(low = np.array([workspace[0][0], workspace[1][0], workspace[2][0]]),
+                                            high = np.array([workspace[0][1], workspace[1][1], workspace[2][1]]))
+
+        self.action_space = spaces.Box(low = np.array([-1, -1, -1]),
+                                        high = np.array([1, 1, 1]))
+
 
         # for pytorch_sac:
         self._max_episode_steps = 10
+        self.ep_step = 0
 
     def seed(self, seed):
         pass
 
     def reset(self, rescale_needed=True):
         print("RESETTING")
+        self.ep_step = 0
         self.ur_pair.move(
             move_type="l",
             params=self.reset_pos_base,
@@ -61,7 +71,7 @@ class Lipa3DEnv(Env):
 
     def step(self, action, rescale_needed=True, verbose=False):
         # assumes 1d action input
-
+        self.ep_step += 1
         # rescale action (assuming input is normalized)
         rescaled_action = self._rescale_action(action) if rescale_needed else action
         left_pose_base, right_pose_base = self.ur_pair.get_pose()
@@ -106,13 +116,21 @@ class Lipa3DEnv(Env):
 
         # get obs after action
         obs = self._get_obs(rescale_needed=rescale_needed)
+        dist = ((obs[0]-self.goal_position[0])**2 + (obs[1]-self.goal_position[1])**2 + (obs[2]-self.goal_position[2])**2)
+        reward = -100*dist
+        done_dist = dist < 0.0016 # should be within 0.03 of goal
+        if done_dist: reward = +10
+        done = done_dist or self.ep_step >= self._max_episode_steps
+        print("obs, reward, done:", obs, reward, done)
+        if done_dist: print("SUCCESS")
+        if done and not done_dist: print("MAX STEPS")
 
         # define task-specific reward outside of this class
-        reward = -1*sum((obs[0]-self.goal_position)**2)
+        # reward = -1*sum((obs[0]-self.goal_position)**2)
         # define task-specific done outside of this class
-        done = reward > -0.0004 # should be within 0.02 of goal
-        print("obs, reward, done:", obs, reward, done)
-        if done: print("SUCCESS")
+        # done = reward > -0.0004 # should be within 0.02 of goal
+        # print("obs, reward, done:", obs, reward, done)
+        # if done: print("SUCCESS")
 
         return obs, reward, done, {}
 
@@ -128,7 +146,7 @@ class Lipa3DEnv(Env):
         return np.array(obs)
 
     def _clip_action(self, world_pose):
-        for ind in range(len(self.workspace)): # this should be 2
+        for ind in range(len(self.workspace)): # this should be 3
             clipped = np.clip([world_pose[ind]], [self.workspace[ind][0]], [self.workspace[ind][1]])[0]
             world_pose[ind] = clipped
         return world_pose
@@ -180,6 +198,7 @@ if __name__ == "__main__":
     robot_env = Lipa3DEnv(ur_pair, workspace)
     print("robot_env", robot_env.ur_pair.get_pose()[0][:3])
     robot_env.reset()
-    while True:
-        action = [0.5, 0.0]
+    # while True:
+    for i in range(3):
+        action = [0.5, 0.0, 0.02]
         robot_env.step(action, verbose=True)
